@@ -1,6 +1,6 @@
 # Qwen 3 Series Model
 
-[Qwen 3 0.6B](./qwen.png)
+![Qwen 3 0.6B](./qwen.png)
 
 ## Qwen 3 0.6B
 
