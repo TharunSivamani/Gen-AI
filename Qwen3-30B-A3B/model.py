@@ -23,25 +23,23 @@ class MoEFeedForward(nn.Module):
         self.num_experts = cfg["num_experts"]
         self.gate = nn.Linear(cfg["emb_dim"], cfg["num_experts"], bias=False, dtype=cfg["dtype"])
 
-        # meta device to reduce memory pressure when initializing the model before loading weights
-        meta_device = torch.device("meta")
         self.fc1 = nn.ModuleList([
             nn.Linear(
                 cfg["emb_dim"], cfg["moe_intermediate_size"],
-                bias=False, dtype=cfg["dtype"], device=meta_device)
+                bias=False, dtype=cfg["dtype"])
             for _ in range(cfg["num_experts"])]
         )
         self.fc2 = nn.ModuleList([
             nn.Linear(
                 cfg["emb_dim"], cfg["moe_intermediate_size"],
-                bias=False, dtype=cfg["dtype"], device=meta_device
+                bias=False, dtype=cfg["dtype"]
                 )
             for _ in range(cfg["num_experts"])]
         )
         self.fc3 = nn.ModuleList([
             nn.Linear(
                 cfg["moe_intermediate_size"], cfg["emb_dim"],
-                bias=False, dtype=cfg["dtype"], device=meta_device
+                bias=False, dtype=cfg["dtype"]
                 )
             for _ in range(cfg["num_experts"])]
         )
