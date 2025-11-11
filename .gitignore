@@ -1,0 +1,155 @@
+# ------------------------------
+# Python / General
+# ------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyo
+*.pyd
+*.swp
+*.bak
+*.tmp
+*.log
+
+# Byte-compiled / cache
+*.pyc
+*.pkl
+*.pickle
+*.joblib
+*.npy
+*.npz
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# ------------------------------
+# Environments / Dependencies
+# ------------------------------
+.env
+.venv
+venv/
+ENV/
+env/
+env.bak/
+*.env
+Pipfile.lock
+poetry.lock
+
+# ------------------------------
+# IDE / Editor files
+# ------------------------------
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ------------------------------
+# OS-generated files
+# ------------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ------------------------------
+# Data / Datasets
+# ------------------------------
+data/
+datasets/
+dataset/
+*.csv
+*.tsv
+*.jsonl
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.h5
+*.hdf5
+*.pkl
+*.npz
+*.pth
+*.pt
+*.ckpt
+
+# Hugging Face / datasets / cache
+~/.cache/
+~/.huggingface/
+~/.torch/
+~/.nv/
+cache/
+hf_cache/
+transformers_cache/
+datasets_cache/
+wandb/
+
+# ------------------------------
+# Model outputs / training
+# ------------------------------
+outputs/
+runs/
+logs/
+logs/*
+wandb/
+checkpoints/
+checkpoints/*
+*.ckpt
+*.pth
+*.pt
+*.onnx
+
+# ------------------------------
+# PyInstaller / Build artifacts
+# ------------------------------
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# ------------------------------
+# Testing / coverage
+# ------------------------------
+.tox/
+.nox/
+.coverage
+coverage.xml
+htmlcov/
+pytest_cache/
+.pytest_cache/
+.cache/
+
+# ------------------------------
+# Temporary notebooks / debug
+# ------------------------------
+*.ipynb~
+debug.log
+nohup.out
+temp/
+tmp/
+
+# ------------------------------
+# Custom for Vision Transformer Projects
+# ------------------------------
+experiments/
+results/
+metrics/
+train_logs/
+tensorboard/
+*.event*
+profiling/
+profiling_logs/
+
+# ------------------------------
+# Docker / Containers
+# ------------------------------
+.dockerignore
+Dockerfile
+docker-compose.yml
+*.pid
+
+# ------------------------------
+# Checkpoint backups or old runs
+# ------------------------------
+*_backup/
+*_old/
