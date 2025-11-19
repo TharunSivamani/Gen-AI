@@ -3,6 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
+import os
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from rope import apply_rope, compute_rope_params
 
 
@@ -33,17 +37,17 @@ class PatchEmbeddings(nn.Module):
             image_resolution % self.patch_size == 0
         ), f"Image Size {(image_resolution, image_resolution)} should be divisible by patch size {(self.patch_size)}"
 
-        print(
-            f"Before Patch Embeddings x shape: {x.shape}"
-        )  # torch.Size([1, 768, 224, 224])
+        # print(
+        #     f"Before Patch Embeddings x shape: {x.shape}"
+        # )  # torch.Size([1, 768, 224, 224])
         x = self.patcher(x)
-        print(f"After Con2d layer x shape: {x.shape}")  # torch.Size([1, 768, 14, 14])
+        # print(f"After Con2d layer x shape: {x.shape}")  # torch.Size([1, 768, 14, 14])
         x = self.flatten(x)
-        print(f"After Flattening x shape: {x.shape}")  # torch.Size([1, 768, 196])
+        # print(f"After Flattening x shape: {x.shape}")  # torch.Size([1, 768, 196])
         # Reshape to change 768 from channel dim to image dim
-        print(
-            f"Final x shape to be sent to transformer encoder: {x.permute(0, 2, 1).shape}"
-        )  # torch.Size([1, 768, 196])
+        # print(
+        #     f"Final x shape to be sent to transformer encoder: {x.permute(0, 2, 1).shape}"
+        # )  # torch.Size([1, 768, 196])
         return x.permute(0, 2, 1)  # [1, 768, 196] -> [1, 196, 768]
 
 
@@ -62,13 +66,13 @@ class MLPBlock(nn.Module):
         )
 
     def forward(self, x):
-        print(f"Before Layer Norm x shape: {x.shape}")
+        # print(f"Before Layer Norm x shape: {x.shape}")
         x = self.layer_norm(x)
-        print(f"After Layer Norm x shape: {x.shape}")
+        # print(f"After Layer Norm x shape: {x.shape}")
 
-        print(f"Before MLP Layer x shape: {x.shape}")
+        # print(f"Before MLP Layer x shape: {x.shape}")
         x = self.mlp(x)
-        print(f"After MLP Layer x shape: {x.shape}")
+        # print(f"After MLP Layer x shape: {x.shape}")
 
         return x
 
@@ -127,14 +131,14 @@ class MultiHeadLatentAttention(nn.Module):
         k = self.k_proj(x).view(B, N, self.num_heads, self.head_dim).transpose(1, 2)
         v = self.v_proj(x).view(B, N, self.num_heads, self.head_dim).transpose(1, 2)
 
-        print(f"KQV shapes before applying RoPE (mid-matmul-operation): {q.shape}")
+        # print(f"KQV shapes before applying RoPE (mid-matmul-operation): {q.shape}")
         # Apply RoPE
         q = apply_rope(q, self.cos.to(q.device), self.sin.to(q.device))
         k = apply_rope(k, self.cos.to(k.device), self.sin.to(k.device))
 
-        print(f"KQV shapes after applying RoPE (mid-matmul-operation): {q.shape}")
+        # print(f"KQV shapes after applying RoPE (mid-matmul-operation): {q.shape}")
 
-        print(f"Q Dimension: {q.shape}")
+        # print(f"Q Dimension: {q.shape}")
 
         latent_k = self.latent_k(x)  # [B, T, ]
         latent_k = latent_k.view(B, N, self.num_latent_heads, self.latent_dim)
@@ -145,8 +149,8 @@ class MultiHeadLatentAttention(nn.Module):
         latent_q = self.latent_q.unsqueeze(0).unsqueeze(2)
         latent_q = latent_q.expand(B, self.num_latent_heads, N, self.latent_dim)
 
-        print(f"Latent Q shape: {latent_q.shape}")
-        print(f"Latent K/V shape: {latent_k.shape}")
+        # print(f"Latent Q shape: {latent_q.shape}")
+        # print(f"Latent K/V shape: {latent_k.shape}")
 
         # Reshaping for mat-mul
         latent_k = latent_k.view(B, self.num_latent_heads, N, self.latent_dim)
@@ -159,7 +163,7 @@ class MultiHeadLatentAttention(nn.Module):
         latent_probs = F.softmax(latent_scores, dim=-1)
         latent_out = torch.matmul(latent_probs, latent_v)
 
-        print(f"Latent out shape: {latent_out.shape}")
+        # print(f"Latent out shape: {latent_out.shape}")
 
         latent_out = (
             latent_out.transpose(1, 2)
@@ -186,9 +190,9 @@ class TransformerEncoderBlock(nn.Module):
         attn_dropout=0.1,
         mlp_size=3072,
         dropout=0.1,
-        num_latent_heads,
-        latent_dim,
-        compression_ratio,
+        num_latent_heads=4,
+        latent_dim=64,
+        compression_ratio=8,
     ):
         super().__init__()
 
@@ -205,13 +209,13 @@ class TransformerEncoderBlock(nn.Module):
 
     def forward(self, x):
 
-        print(f"Before MSA x shape: {x.shape}")
+        # print(f"Before MSA x shape: {x.shape}")
         x = self.msa_block(x) + x
-        print(f"After MSA x shape: {x.shape}")
+        # print(f"After MSA x shape: {x.shape}")
 
-        print(f"Before MLP x shape: {x.shape}")
+        # print(f"Before MLP x shape: {x.shape}")
         x = self.mlp_block(x) + x
-        print(f"After MLP x shape: {x.shape}")
+        # print(f"After MLP x shape: {x.shape}")
 
         return x
 
@@ -314,9 +318,9 @@ if __name__ == "__main__":
     patch = ViTMHLA(224, 16, 768, 0, 3, 12, 3072, 0, 12, 1000, 4, 64, 8)
 
     x = torch.randn((1, 3, 224, 224))
-    print("Input shape: ", x.shape)
+    # print("Input shape: ", x.shape)
 
     out = patch(x)
 
-    print(f"Output shape: {out.shape}")
-    print(out.shape)
+    # print(f"Output shape: {out.shape}")
+    # print(out.shape)

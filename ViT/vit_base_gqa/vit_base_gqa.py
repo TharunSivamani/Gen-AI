@@ -2,6 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import os
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from rope import apply_rope, compute_rope_params
 
 
@@ -32,17 +37,17 @@ class PatchEmbeddings(nn.Module):
             image_resolution % self.patch_size == 0
         ), f"Image Size {(image_resolution, image_resolution)} should be divisible by patch size {(self.patch_size)}"
 
-        print(
-            f"Before Patch Embeddings x shape: {x.shape}"
-        )  # torch.Size([1, 768, 224, 224])
+        # print(
+        # f"Before Patch Embeddings x shape: {x.shape}"
+        # )  # torch.Size([1, 768, 224, 224])
         x = self.patcher(x)
-        print(f"After Con2d layer x shape: {x.shape}")  # torch.Size([1, 768, 14, 14])
+        # print(f"After Con2d layer x shape: {x.shape}")  # torch.Size([1, 768, 14, 14])
         x = self.flatten(x)
-        print(f"After Flattening x shape: {x.shape}")  # torch.Size([1, 768, 196])
+        # print(f"After Flattening x shape: {x.shape}")  # torch.Size([1, 768, 196])
         # Reshape to change 768 from channel dim to image dim
-        print(
-            f"Final x shape to be sent to transformer encoder: {x.permute(0, 2, 1).shape}"
-        )  # torch.Size([1, 768, 196])
+        # print(
+        #     f"Final x shape to be sent to transformer encoder: {x.permute(0, 2, 1).shape}"
+        # )  # torch.Size([1, 768, 196])
         return x.permute(0, 2, 1)  # [1, 768, 196] -> [1, 196, 768]
 
 
@@ -61,13 +66,13 @@ class MLPBlock(nn.Module):
         )
 
     def forward(self, x):
-        print(f"Before Layer Norm x shape: {x.shape}")
+        # print(f"Before Layer Norm x shape: {x.shape}")
         x = self.layer_norm(x)
-        print(f"After Layer Norm x shape: {x.shape}")
+        # print(f"After Layer Norm x shape: {x.shape}")
 
-        print(f"Before MLP Layer x shape: {x.shape}")
+        # print(f"Before MLP Layer x shape: {x.shape}")
         x = self.mlp(x)
-        print(f"After MLP Layer x shape: {x.shape}")
+        # print(f"After MLP Layer x shape: {x.shape}")
 
         return x
 
@@ -107,22 +112,22 @@ class GroupedQueryAttention(nn.Module):
         k = self.k_proj(x).view(B, N, self.num_kv_heads, self.head_dim).transpose(1, 2)
         v = self.v_proj(x).view(B, N, self.num_kv_heads, self.head_dim).transpose(1, 2)
 
-        print(f"KQV shapes before applying RoPE (mid-matmul-operation): {q.shape}")
+        # print(f"KQV shapes before applying RoPE (mid-matmul-operation): {q.shape}")
         # Apply RoPE
         q = apply_rope(q, self.cos.to(q.device), self.sin.to(q.device))
         k = apply_rope(k, self.cos.to(k.device), self.sin.to(k.device))
 
-        print(f"KQV shapes after applying RoPE (mid-matmul-operation): {q.shape}")
+        # print(f"KQV shapes after applying RoPE (mid-matmul-operation): {q.shape}")
 
-        print(f"Q Dimension: {q.shape}")
-        print(f"K/V Dimension Before Interleave: {k.shape}")
+        # print(f"Q Dimension: {q.shape}")
+        # print(f"K/V Dimension Before Interleave: {k.shape}")
 
         # Expand K/V to match Q dimensions
         repeat_factor = self.num_heads // self.num_kv_heads
         k = k.repeat_interleave(repeat_factor, dim=1)
         v = v.repeat_interleave(repeat_factor, dim=1)
 
-        print(f"K/V Dimension After Interleave: {k.shape}")
+        # print(f"K/V Dimension After Interleave: {k.shape}")
 
         # Use the built-in fused attention
         context = F.scaled_dot_product_attention(
@@ -134,9 +139,9 @@ class GroupedQueryAttention(nn.Module):
             is_causal=False,
         )
 
-        print(f"Context Shape before transformation: {context.shape}")
+        # print(f"Context Shape before transformation: {context.shape}")
         context = context.transpose(1, 2).contiguous().view(B, N, D)
-        print(f"Context Shape After transformation: {context.shape}")
+        # print(f"Context Shape After transformation: {context.shape}")
 
         return self.o_proj(context)
 
@@ -156,13 +161,13 @@ class TransformerEncoderBlock(nn.Module):
 
     def forward(self, x):
 
-        print(f"Before MSA x shape: {x.shape}")
+        # print(f"Before MSA x shape: {x.shape}")
         x = self.msa_block(x) + x
-        print(f"After MSA x shape: {x.shape}")
+        # print(f"After MSA x shape: {x.shape}")
 
-        print(f"Before MLP x shape: {x.shape}")
+        # print(f"Before MLP x shape: {x.shape}")
         x = self.mlp_block(x) + x
-        print(f"After MLP x shape: {x.shape}")
+        # print(f"After MLP x shape: {x.shape}")
 
         return x
 
@@ -261,9 +266,9 @@ if __name__ == "__main__":
     patch = ViTGQA(224, 16, 768, 0, 3, 12, 3072, 0, 12, 1000, 4)
 
     x = torch.randn((1, 3, 224, 224))
-    print("Input shape: ", x.shape)
+    # print("Input shape: ", x.shape)
 
     out = patch(x)
 
-    print(f"Output shape: {out.shape}")
-    print(out.shape)
+    # print(f"Output shape: {out.shape}")
+    # print(out.shape)

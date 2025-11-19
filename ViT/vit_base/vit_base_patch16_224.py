@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 import os
 import sys
@@ -34,17 +35,17 @@ class PatchEmbeddings(nn.Module):
             image_resolution % self.patch_size == 0
         ), f"Image Size {(image_resolution, image_resolution)} should be divisible by patch size {(self.patch_size)}"
 
-        print(
-            f"Before Patch Embeddings x shape: {x.shape}"
-        )  # torch.Size([1, 768, 224, 224])
+        # print(
+        # f"Before Patch Embeddings x shape: {x.shape}"
+        # )  # torch.Size([1, 768, 224, 224])
         x = self.patcher(x)
-        print(f"After Con2d layer x shape: {x.shape}")  # torch.Size([1, 768, 14, 14])
+        # print(f"After Con2d layer x shape: {x.shape}")  # torch.Size([1, 768, 14, 14])
         x = self.flatten(x)
-        print(f"After Flattening x shape: {x.shape}")  # torch.Size([1, 768, 196])
+        # print(f"After Flattening x shape: {x.shape}")  # torch.Size([1, 768, 196])
         # Reshape to change 768 from channel dim to image dim
-        print(
-            f"Final x shape to be sent to transformer encoder: {x.permute(0, 2, 1).shape}"
-        )  # torch.Size([1, 768, 196])
+        # print(
+        # f"Final x shape to be sent to transformer encoder: {x.permute(0, 2, 1).shape}"
+        # )  # torch.Size([1, 768, 196])
         return x.permute(0, 2, 1)  # [1, 768, 196] -> [1, 196, 768]
 
 
@@ -63,38 +64,88 @@ class MLPBlock(nn.Module):
         )
 
     def forward(self, x):
-        print(f"Before Layer Norm x shape: {x.shape}")
+        # print(f"Before Layer Norm x shape: {x.shape}")
         x = self.layer_norm(x)
-        print(f"After Layer Norm x shape: {x.shape}")
+        # print(f"After Layer Norm x shape: {x.shape}")
 
-        print(f"Before MLP Layer x shape: {x.shape}")
+        # print(f"Before MLP Layer x shape: {x.shape}")
         x = self.mlp(x)
-        print(f"After MLP Layer x shape: {x.shape}")
+        # print(f"After MLP Layer x shape: {x.shape}")
 
         return x
 
 
 class MultiHeadSelfAttention(nn.Module):
-
-    def __init__(self, embedding_dim, num_heads, attn_dropout):
+    def __init__(self, embedding_dim, num_heads, attn_dropout=0.0):
         super().__init__()
+        assert embedding_dim % num_heads == 0
+
+        self.num_heads = num_heads
+        self.head_dim = embedding_dim // num_heads
+        self.embedding_dim = embedding_dim
+        self.dropout_p = attn_dropout
 
         self.layer_norm = nn.LayerNorm(embedding_dim)
-        self.multihead_attn = nn.MultiheadAttention(
-            embedding_dim, num_heads=num_heads, dropout=attn_dropout, batch_first=True
-        )
 
-    def forward(self, x):
+        # Q, K, V projections
+        self.q_proj = nn.Linear(embedding_dim, embedding_dim, bias=False)
+        self.k_proj = nn.Linear(embedding_dim, embedding_dim, bias=False)
+        self.v_proj = nn.Linear(embedding_dim, embedding_dim, bias=False)
 
-        # as per paper layer_norm -> MHA
+        # Output projection
+        self.o_proj = nn.Linear(embedding_dim, embedding_dim, bias=False)
+
+    def forward(self, x, attn_mask=None, is_causal=False):
+        # x: (B, T, C)
+        B, T, C = x.shape
+
+        # Pre-normalization
         x = self.layer_norm(x)
 
-        print(f"After Layer-Norm x shape: {x.shape}")
-        attn_output, _ = self.multihead_attn(
-            query=x, key=x, value=x, need_weights=False
-        )
-        print(f"Self-Attn shape: {attn_output.shape}")
-        return attn_output
+        # (B, T, C) -> (B, heads, T, head_dim)
+        q = self.q_proj(x).reshape(B, T, self.num_heads, self.head_dim).transpose(1, 2)
+        k = self.k_proj(x).reshape(B, T, self.num_heads, self.head_dim).transpose(1, 2)
+        v = self.v_proj(x).reshape(B, T, self.num_heads, self.head_dim).transpose(1, 2)
+
+        # SDPA expects (B, heads, T, Hd)
+        out = F.scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            attn_mask=attn_mask,
+            dropout_p=self.dropout_p if self.training else 0.0,
+            is_causal=is_causal,
+        )  # (B, heads, T, head_dim)
+
+        # Back to (B, T, C)
+        out = out.transpose(1, 2).reshape(B, T, C)
+
+        # Final projection
+        out = self.o_proj(out)
+        return out
+
+
+# class MultiHeadSelfAttention(nn.Module):
+
+#     def __init__(self, embedding_dim, num_heads, attn_dropout):
+#         super().__init__()
+
+#         self.layer_norm = nn.LayerNorm(embedding_dim)
+#         self.multihead_attn = nn.MultiheadAttention(
+#             embedding_dim, num_heads=num_heads, dropout=attn_dropout, batch_first=True
+#         )
+
+#     def forward(self, x):
+
+#         # as per paper layer_norm -> MHA
+#         x = self.layer_norm(x)
+
+#         # print(f"After Layer-Norm x shape: {x.shape}")
+#         attn_output, _ = self.multihead_attn(
+#             query=x, key=x, value=x, need_weights=False
+#         )
+#         # print(f"Self-Attn shape: {attn_output.shape}")
+#         return attn_output
 
 
 class TransformerEncoderBlock(nn.Module):
@@ -108,13 +159,13 @@ class TransformerEncoderBlock(nn.Module):
 
     def forward(self, x):
 
-        print(f"Before MSA x shape: {x.shape}")
+        # print(f"Before MSA x shape: {x.shape}")
         x = self.msa_block(x) + x
-        print(f"After MSA x shape: {x.shape}")
+        # print(f"After MSA x shape: {x.shape}")
 
-        print(f"Before MLP x shape: {x.shape}")
+        # print(f"Before MLP x shape: {x.shape}")
         x = self.mlp_block(x) + x
-        print(f"After MLP x shape: {x.shape}")
+        # print(f"After MLP x shape: {x.shape}")
 
         return x
 
@@ -207,9 +258,9 @@ if __name__ == "__main__":
     patch = ViTBase(224, 16, 768, 0, 3, 12, 3072, 0, 12, 1000)
 
     x = torch.randn((1, 3, 224, 224))
-    print("Input shape: ", x.shape)
+    # print("Input shape: ", x.shape)
 
     out = patch(x)
 
-    print(f"Output shape: {out.shape}")
-    print(out.shape)
+    # print(f"Output shape: {out.shape}")
+    # print(out.shape)
